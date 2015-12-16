@@ -37,10 +37,10 @@ class FunBot
       inc_work
 
       fname = URI(url).path.split('/').last
-      return skip_step('Skipping missed filename') unless fname
+      return finish_step('Skipping missed filename') unless fname
 
       fext = File.extname(fname)
-      return skip_step("Skipping missed extension for #{fname}") if fext.blank?
+      return finish_step("Skipping missed extension for #{fname}") if fext.blank?
 
       bname = File.basename(fname, fext)[0..MAX_FNAME_LEN].gsub(/[^a-z0-9\-\.]+/i, '_')
       fname = bname + fext
@@ -85,18 +85,22 @@ class FunBot
     end
   end
 
-  def skip_step(msg)
-    puts(msg)
+  def finish_step(msg = nil)
+    puts(msg) if msg
     dec_work
     run
   end
 
   def next_step(file, status = nil)
     file.close
-    # TODO: This should also be async
-    File.delete(file.native.path) if !status || status != 200
-    dec_work
-    run
+    error = nil
+    if !status || status != 200
+      fpath = file.native.path
+      # TODO: This should also be async
+      File.delete(fpath)
+      error = "Error with file #{File.basename(fpath)}"
+    end
+    finish_step(error)
   end
 end
 
@@ -114,8 +118,11 @@ def print_stat
 end
 
 def get_image_urls
-  host = URL.start_with?('http') ? URL : "http://#{URL}"
-  html = open(host, :allow_redirections => :all)
+  url = URL.start_with?('http') ? URL : "http://#{URL}"
+  html = open(url, :allow_redirections => :all)
+
+  uri = URI(url)
+  host = uri.scheme + '://' + uri.host
 
   urls = Nokogiri::HTML(html).xpath("//img/@src").map(&:value)
   urls.map{ |u| u =~ /^(http|\/\/)/ ? u : File.join(host, u) }
