@@ -32,6 +32,7 @@ class FunBot
 
   def run
     return if @queue.empty?
+
     @queue.pop do |url|
       inc_work
 
@@ -46,7 +47,7 @@ class FunBot
 
       suffix = 0
       while @images.include?(fname)
-        suffix = suffix + 1
+        suffix += 1
         fname = bname + "-#{suffix}" + fext
       end
       @images << fname
@@ -92,9 +93,8 @@ class FunBot
 
   def next_step(file, status = nil)
     file.close
-    fpath = file.native.path
     # TODO: This should also be async
-    File.delete(fpath) if !status || status != 200
+    File.delete(file.native.path) if !status || status != 200
     dec_work
     run
   end
@@ -140,4 +140,3 @@ EM.run do
     EventMachine.stop if done?
   end
 end
-
